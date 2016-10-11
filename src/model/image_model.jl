@@ -36,6 +36,26 @@ type Image
     raw_psf_comp::RawPSF
 end
 
+### TODO
+
+import Base: getindex, size
+
+type ArrayView <: AbstractArray{Float32, 2}
+    array::Array{Float32, 2}
+    starts::Vector{Int64}
+    ends::Vector{Int64}
+end
+
+size(view::ArrayView) = tuple((view.ends .- view.starts)...)
+
+getindex(view::ArrayView, index_vector) = getindex(view.array, index_vector .+ view.starts)
+
+function getindex(view::ArrayView, index_x, index_y)
+    getindex(view.array, index_x + view.starts[1], index_y + view.starts[2])
+end
+
+### TODO
+
 
 """
 Tiles of pixels that share the same set of
@@ -57,12 +77,13 @@ immutable ImageTile
 
     h_range::UnitRange{Int}
     w_range::UnitRange{Int}
-    pixels::Matrix{Float32}
+    #pixels::Matrix{Float32}
+    pixels::ArrayView
 
-    epsilon_mat::Matrix{Float32}
+    #epsilon_mat::Matrix{Float32}
+    epsilon_mat::ArrayView
     iota_vec::Vector{Float32}
 end
-
 
 """
 Constructs an image tile from an image.
@@ -82,8 +103,10 @@ function ImageTile(hh::Int, ww::Int, img::Image, tile_width::Int)
     w2 = min(ww * tile_width, img.W)
     w_range = w1:w2
 
-    pixels = img.pixels[h_range, w_range]
-    epsilon_mat = img.epsilon_mat[h_range, w_range]
+    #pixels = img.pixels[h_range, w_range]
+    pixels = ArrayView(img.pixels, [h1 - 1, w1 - 1], [h2, w2])
+    #epsilon_mat = img.epsilon_mat[h_range, w_range]
+    epsilon_mat = ArrayView(img.epsilon_mat, [h1 - 1, w1 - 1], [h2, w2])
     iota_vec = img.iota_vec[h_range]
 
     @assert 1 <= img.b <= B
